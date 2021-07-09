@@ -16,13 +16,9 @@ def macro_handler(dev, n, is_down):
 			dev.kbd.keymap = default_keymap
 			dev.kbd.setup()
 		elif n == 1:
-			if dev.kbd.usb_status == 3:
-				log('Switch to Qwerty(plain) layout\n')
-				dev.kbd.keymap = keymap_qwerty_plain
-				dev.kbd.setup()
-			else:
-				# do nothing, prevent unexpected losing control
-				return
+			log('Switch to Qwerty(plain) layout\n')
+			dev.kbd.keymap = keymap_qwerty_plain
+			dev.kbd.setup()
 		elif n == 2:
 			log('Switch to Dvorak layout\n')
 			dev.kbd.keymap = keymap_dvorak
