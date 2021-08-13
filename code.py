@@ -1,12 +1,16 @@
 # from keyboard import *
-from keymaps import *
+from keyboard import *
+from keymaps import keymaps
 import microcontroller
 import storage
 
 keyboard = Keyboard()
 log = keyboard.log
 
-default_keymap = keymap_qwerty
+default_keymap = keymaps['qwerty_mod']
+keymap_qwerty_plain = keymaps['qwerty_plain']
+keymap_dvorak = keymaps['dvorak']
+keymap_norman = keymaps['norman']
 
 def macro_handler(dev, n, is_down):
 	if is_down:
@@ -67,6 +71,7 @@ keyboard.pairs = [
 #LSHIFT(52) Z(51)  X(50)  C(49)  V(48)  B(47)  N(46)  M(45)  ,(44)  .(43)  /(42)            RSHIFT(41)
 # LCTRL(53)  LGUI(54)  LALT(55)               SPACE(56)          RALT(57)  MENU(58)  Fn(59)  RCTRL(60)
 
+# Uncomment line below to disable serial debug output
 # keyboard.verbose = False
 
 keyboard.run()
