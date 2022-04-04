@@ -1,5 +1,5 @@
 # from keyboard import *
-from keyboard import *
+from keyboard import Keyboard
 from keymaps import keymaps
 import microcontroller
 import storage
@@ -13,6 +13,7 @@ keymap_dvorak = keymaps['dvorak']
 keymap_norman = keymaps['norman']
 
 def macro_handler(dev, n, is_down):
+	# TODO: use dictionary to register callbacks instead
 	if is_down:
 		log('You pressed macro #{}\n'.format(n))
 		if n == 0:
