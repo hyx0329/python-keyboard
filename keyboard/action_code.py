@@ -314,134 +314,134 @@ GUI = LEFT_GUI
 
 
 ASCII_TO_KEYCODE = (
-    b'\x00'  # NUL
-    b'\x01'  # SOH as TRANSPARENT
-    b'\x00'  # STX
-    b'\x00'  # ETX
-    b'\x00'  # EOT
-    b'\x00'  # ENQ
-    b'\x00'  # ACK
-    b'\x00'  # BEL \a
-    b'\x2a'  # BS BACKSPACE \b
-    b'\x2b'  # TAB \t
-    b'\x28'  # LF \n RETURN / ENTER
-    b'\x00'  # VT \v
-    b'\x00'  # FF \f
-    b'\x28'  # CR \r as RETURN
-    b'\x00'  # SO
-    b'\x00'  # SI
-    b'\x00'  # DLE
-    b'\x00'  # DC1
-    b'\x00'  # DC2
-    b'\x00'  # DC3
-    b'\x00'  # DC4
-    b'\x00'  # NAK
-    b'\x00'  # SYN
-    b'\x00'  # ETB
-    b'\x00'  # CAN
-    b'\x00'  # EM
-    b'\x00'  # SUB
-    b'\x29'  # ESC
-    b'\x00'  # FS
-    b'\x00'  # GS
-    b'\x00'  # RS
-    b'\x00'  # US
-    b'\x2c'  # SPACE
-    b'\x9e'  # ! (shift 1)
-    b'\xb4'  # ' (shift ')
-    b'\xa0'  # # (shift 3)
-    b'\xa1'  # $ (shift 4)
-    b'\xa2'  # % (shift 5)
-    b'\xa4'  # & (shift 7)
-    b'\x34'  # '
-    b'\xa6'  # ( (shift 9)
-    b'\xa7'  # ) (shift 0)
-    b'\xa5'  # * (shift 8)
-    b'\xae'  # + (shift =)
-    b'\x36'  # ,
-    b'\x2d'  # -
-    b'\x37'  # .
-    b'\x38'  # /
-    b'\x27'  # 0
-    b'\x1e'  # 1
-    b'\x1f'  # 2
-    b'\x20'  # 3
-    b'\x21'  # 4
-    b'\x22'  # 5
-    b'\x23'  # 6
-    b'\x24'  # 7
-    b'\x25'  # 8
-    b'\x26'  # 9
-    b'\xb3'  # : (shift ;)
-    b'\x33'  # ;
-    b'\xb6'  # < (shift ,)
-    b'\x2e'  # =
-    b'\xb7'  # > (shift .)
-    b'\xb8'  # ? (shift /)
-    b'\x9f'  # @ (shift 2)
-    b'\x84'  # A
-    b'\x85'  # B
-    b'\x86'  # C
-    b'\x87'  # D
-    b'\x88'  # E
-    b'\x89'  # F
-    b'\x8a'  # G
-    b'\x8b'  # H
-    b'\x8c'  # I
-    b'\x8d'  # J
-    b'\x8e'  # K
-    b'\x8f'  # L
-    b'\x90'  # M
-    b'\x91'  # N
-    b'\x92'  # O
-    b'\x93'  # P
-    b'\x94'  # Q
-    b'\x95'  # R
-    b'\x96'  # S
-    b'\x97'  # T
-    b'\x98'  # U
-    b'\x99'  # V
-    b'\x9a'  # W
-    b'\x9b'  # X
-    b'\x9c'  # Y
-    b'\x9d'  # Z
-    b'\x2f'  # [
-    b'\x31'  # \ backslash
-    b'\x30'  # ]
-    b'\xa3'  # ^ (shift 6)
-    b'\xad'  # _ (shift -)
-    b'\x35'  # `
-    b'\x04'  # a
-    b'\x05'  # b
-    b'\x06'  # c
-    b'\x07'  # d
-    b'\x08'  # e
-    b'\x09'  # f
-    b'\x0a'  # g
-    b'\x0b'  # h
-    b'\x0c'  # i
-    b'\x0d'  # j
-    b'\x0e'  # k
-    b'\x0f'  # l
-    b'\x10'  # m
-    b'\x11'  # n
-    b'\x12'  # o
-    b'\x13'  # p
-    b'\x14'  # q
-    b'\x15'  # r
-    b'\x16'  # s
-    b'\x17'  # t
-    b'\x18'  # u
-    b'\x19'  # v
-    b'\x1a'  # w
-    b'\x1b'  # x
-    b'\x1c'  # y
-    b'\x1d'  # z
-    b'\xaf'  # { (shift [)
-    b'\xb1'  # | (shift \)
-    b'\xb0'  # } (shift ])
-    b'\xb5'  # ~ (shift `)
-    b'\x4c'  # DEL DELETE Forward
+	b'\x00'  # NUL
+	b'\x01'  # SOH as TRANSPARENT
+	b'\x00'  # STX
+	b'\x00'  # ETX
+	b'\x00'  # EOT
+	b'\x00'  # ENQ
+	b'\x00'  # ACK
+	b'\x00'  # BEL \a
+	b'\x2a'  # BS BACKSPACE \b
+	b'\x2b'  # TAB \t
+	b'\x28'  # LF \n RETURN / ENTER
+	b'\x00'  # VT \v
+	b'\x00'  # FF \f
+	b'\x28'  # CR \r as RETURN
+	b'\x00'  # SO
+	b'\x00'  # SI
+	b'\x00'  # DLE
+	b'\x00'  # DC1
+	b'\x00'  # DC2
+	b'\x00'  # DC3
+	b'\x00'  # DC4
+	b'\x00'  # NAK
+	b'\x00'  # SYN
+	b'\x00'  # ETB
+	b'\x00'  # CAN
+	b'\x00'  # EM
+	b'\x00'  # SUB
+	b'\x29'  # ESC
+	b'\x00'  # FS
+	b'\x00'  # GS
+	b'\x00'  # RS
+	b'\x00'  # US
+	b'\x2c'  # SPACE
+	b'\x9e'  # ! (shift 1)
+	b'\xb4'  # ' (shift ')
+	b'\xa0'  # # (shift 3)
+	b'\xa1'  # $ (shift 4)
+	b'\xa2'  # % (shift 5)
+	b'\xa4'  # & (shift 7)
+	b'\x34'  # '
+	b'\xa6'  # ( (shift 9)
+	b'\xa7'  # ) (shift 0)
+	b'\xa5'  # * (shift 8)
+	b'\xae'  # + (shift =)
+	b'\x36'  # ,
+	b'\x2d'  # -
+	b'\x37'  # .
+	b'\x38'  # /
+	b'\x27'  # 0
+	b'\x1e'  # 1
+	b'\x1f'  # 2
+	b'\x20'  # 3
+	b'\x21'  # 4
+	b'\x22'  # 5
+	b'\x23'  # 6
+	b'\x24'  # 7
+	b'\x25'  # 8
+	b'\x26'  # 9
+	b'\xb3'  # : (shift ;)
+	b'\x33'  # ;
+	b'\xb6'  # < (shift ,)
+	b'\x2e'  # =
+	b'\xb7'  # > (shift .)
+	b'\xb8'  # ? (shift /)
+	b'\x9f'  # @ (shift 2)
+	b'\x84'  # A
+	b'\x85'  # B
+	b'\x86'  # C
+	b'\x87'  # D
+	b'\x88'  # E
+	b'\x89'  # F
+	b'\x8a'  # G
+	b'\x8b'  # H
+	b'\x8c'  # I
+	b'\x8d'  # J
+	b'\x8e'  # K
+	b'\x8f'  # L
+	b'\x90'  # M
+	b'\x91'  # N
+	b'\x92'  # O
+	b'\x93'  # P
+	b'\x94'  # Q
+	b'\x95'  # R
+	b'\x96'  # S
+	b'\x97'  # T
+	b'\x98'  # U
+	b'\x99'  # V
+	b'\x9a'  # W
+	b'\x9b'  # X
+	b'\x9c'  # Y
+	b'\x9d'  # Z
+	b'\x2f'  # [
+	b'\x31'  # \ backslash
+	b'\x30'  # ]
+	b'\xa3'  # ^ (shift 6)
+	b'\xad'  # _ (shift -)
+	b'\x35'  # `
+	b'\x04'  # a
+	b'\x05'  # b
+	b'\x06'  # c
+	b'\x07'  # d
+	b'\x08'  # e
+	b'\x09'  # f
+	b'\x0a'  # g
+	b'\x0b'  # h
+	b'\x0c'  # i
+	b'\x0d'  # j
+	b'\x0e'  # k
+	b'\x0f'  # l
+	b'\x10'  # m
+	b'\x11'  # n
+	b'\x12'  # o
+	b'\x13'  # p
+	b'\x14'  # q
+	b'\x15'  # r
+	b'\x16'  # s
+	b'\x17'  # t
+	b'\x18'  # u
+	b'\x19'  # v
+	b'\x1a'  # w
+	b'\x1b'  # x
+	b'\x1c'  # y
+	b'\x1d'  # z
+	b'\xaf'  # { (shift [)
+	b'\xb1'  # | (shift \)
+	b'\xb0'  # } (shift ])
+	b'\xb5'  # ~ (shift `)
+	b'\x4c'  # DEL DELETE Forward
 )
 
 
@@ -495,36 +495,36 @@ OP_TAP_TOGGLE = 0xF0
 
 # convert keyname to action code
 def get_action_code(x):
-    if type(x) is int:
-        return x if x > 9 else ASCII_TO_KEYCODE[ord(str(x))]
-    if type(x) is str and len(x) == 1:
-        return ASCII_TO_KEYCODE[ord(x)] & 0x7F
-    if x is None:
-        return 0
-    raise ValueError('Invalid keyname {}'.format(x))
+	if type(x) is int:
+		return x if x > 9 else ASCII_TO_KEYCODE[ord(str(x))]
+	if type(x) is str and len(x) == 1:
+		return ASCII_TO_KEYCODE[ord(x)] & 0x7F
+	if x is None:
+		return 0
+	raise ValueError('Invalid keyname {}'.format(x))
 
 def MODS(*args):
-    MAP = { LCTRL: 1, LSHIFT: 2, LALT: 4, LGUI: 8, RCTRL: 0x11, RSHIFT: 0x12, RALT: 0x14, RGUI: 0x18 }
-    mods = 0
-    for m in args:
-        if m not in MAP:
-            raise ValueError('Invalid modifier {}'.format(m))
-        mods |= MAP[m]
-    return mods
+	MAP = { LCTRL: 1, LSHIFT: 2, LALT: 4, LGUI: 8, RCTRL: 0x11, RSHIFT: 0x12, RALT: 0x14, RGUI: 0x18 }
+	mods = 0
+	for m in args:
+		if m not in MAP:
+			raise ValueError('Invalid modifier {}'.format(m))
+		mods |= MAP[m]
+	return mods
 
 def mods_to_keycodes(mods):
-    # if mods & 0x10:
-    #     all_mods = (RCTRL, RSHIFT, RALT, RGUI)
-    # else:
-    #     all_mods = (LCTRL, LSHIFT, LALT, LGUI)
-    # return list(filter(lambda k: mods & (1 << (k & 0x3)), all_mods))
+	# if mods & 0x10:
+	#     all_mods = (RCTRL, RSHIFT, RALT, RGUI)
+	# else:
+	#     all_mods = (LCTRL, LSHIFT, LALT, LGUI)
+	# return list(filter(lambda k: mods & (1 << (k & 0x3)), all_mods))
 
-    b = RCTRL if mods & 0x10 else LCTRL
-    o = []
-    for i in range(4):
-        if (mods >> i) & 1:
-            o.append(b + i)
-    return o
+	b = RCTRL if mods & 0x10 else LCTRL
+	o = []
+	for i in range(4):
+		if (mods >> i) & 1:
+			o.append(b + i)
+	return o
 
 ACTION = lambda kind, param: (kind << 12) | param
 
@@ -563,10 +563,10 @@ MS_W_UP = MOUSEKEY(9 << 8)
 MS_W_DN = MOUSEKEY(10 << 8)
 
 MS_MOVEMENT = (
-    (0, 0, 0),
-    (0, -2, 0), (0, 2, 0), (-2, 0, 0), (2, 0, 0),
-    (-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0),
-    (0, 0, 1), (0, 0, -1)
+	(0, 0, 0),
+	(0, -2, 0), (0, 2, 0), (-2, 0, 0), (2, 0, 0),
+	(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0),
+	(0, 0, 1), (0, 0, -1)
 )
 
 MACRO = lambda n: ACTION(ACT_MACRO, n)
