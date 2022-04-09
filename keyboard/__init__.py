@@ -412,9 +412,23 @@ class Keyboard:
         ms = matrix.ms
         last_time = 0
         mouse_action = 0
+        mouse_move = [0, 0, 0]
+        mouse_speed = 1
         mouse_time = 0
+        backlight_interval = 20
+        backlight_last_time = 0
         while True:
-            t = 20 if self.backlight.check() or mouse_action else 1000
+            t = 1 if mouse_action else 1000
+            current_time = time.monotonic_ns() // 1000000
+            wait_time = backlight_interval + backlight_last_time - current_time
+            if wait_time <= 0:
+                backlight_last_time = current_time
+                if self.backlight.check():
+                    backlight_interval = 20
+                else:
+                    backlight_interval = 1000
+            elif t > wait_time:
+                t = wait_time
             n = matrix.wait(t)
             self.check()
 
@@ -476,11 +490,34 @@ class Keyboard:
                             if action_code & 0x400:
                                 self.send_consumer(action_code & 0x3FF)
                         elif kind == ACT_MOUSEKEY:
-                            if action_code & 0xF00 == 0:
+                            mouse_code = (action_code >> 8) & 0xF
+                            if mouse_code == 0:
                                 self.press_mouse(action_code & 0xF)
+                            elif mouse_code >= 11:
+                                mouse_speed += 1
                             else:
-                                mouse_action = (action_code >> 8) & 0xF
+                                mouse_action += 1
+                                m = MS_MOVEMENT[mouse_code]
+                                mouse_move[0] += m[0]
+                                mouse_move[1] += m[1]
+                                mouse_move[2] += m[2]
                                 mouse_time = time.monotonic_ns()
+                        elif kind == ACT_LAYER:
+                            # op<<10|on<<8|part<<5|(bits&0x1f)
+                            on = (action_code >> 8) & 0x3
+                            if on == ON_PRESS or on == ON_BOTH:
+                                op = (action_code >> 10) & 0x3
+                                part = (action_code >> 5) & 0x7
+                                xbit = (action_code >> 4) & 0x1
+                                bits_shift = part * 4
+                                bits = (action_code & 0xF) << bits_shift
+                                mask = bits | ~(0xF << bits_shift) if xbit else bits
+                                if op == OP_BIT_AND:
+                                    self.layer_mask &= mask
+                                elif op == OP_BIT_OR:
+                                    self.layer_mask |= mask
+                                elif op == OP_BIT_XOR:
+                                    self.layer_mask ^= mask
                         elif kind == ACT_LAYER_TAP or kind == ACT_LAYER_TAP_EXT:
                             layer = (action_code >> 8) & 0x1F
                             mask = 1 << layer
@@ -584,11 +621,36 @@ class Keyboard:
                             if action_code & 0x400:
                                 self.send_consumer(0)
                         elif kind == ACT_MOUSEKEY:
-                            if action_code & 0xF00 == 0:
+                            mouse_code = (action_code >> 8) & 0xF
+                            if mouse_code == 0:
                                 self.release_mouse(action_code & 0xF)
-                            elif (action_code >> 8) & 0xF == mouse_action:
-                                mouse_action = 0
-                                self.move_mouse(0, 0, 0)
+                            elif mouse_code >= 11:
+                                mouse_speed -= 1
+                            else:
+                                m = MS_MOVEMENT[mouse_code]
+                                mouse_move[0] -= m[0]
+                                mouse_move[1] -= m[1]
+                                mouse_move[2] -= m[2]
+                                mouse_action -= 1
+                                if mouse_action == 0:
+                                    mouse_speed = 1
+                                    self.move_mouse(0, 0, 0)
+                        elif kind == ACT_LAYER:
+                            # op<<10|on<<8|part<<5|(bits&0x1f)
+                            on = (action_code >> 8) & 0x3
+                            if on == ON_RELEASE:
+                                op = (action_code >> 10) & 0x3
+                                part = (action_code >> 5) & 0x7
+                                xbit = (action_code >> 4) & 0x1
+                                bits_shift = part * 4
+                                bits = (action_code & 0xF) << bits_shift
+                                mask = bits | ~(0xF << bits_shift) if xbit else bits
+                                if op == OP_BIT_AND:
+                                    self.layer_mask &= mask
+                                elif op == OP_BIT_OR:
+                                    self.layer_mask |= mask
+                                elif op == OP_BIT_XOR:
+                                    self.layer_mask ^= mask
                         elif kind == ACT_LAYER_TAP or kind == ACT_LAYER_TAP_EXT:
                             layer = (action_code >> 8) & 0x1F
                             keycode = action_code & 0xFF
@@ -618,7 +680,14 @@ class Keyboard:
                         )
 
             if mouse_action:
-                x, y, wheel = MS_MOVEMENT[mouse_action]
-                dt = 1 + (time.monotonic_ns() - mouse_time) // 8000000
+                x, y, wheel = mouse_move
+                dt = time.monotonic_ns() - mouse_time
+                # dt = 1 + (time.monotonic_ns() - mouse_time) // 8000000
+                distance = dt * mouse_speed // 40000000
+                if distance <= 0:
+                    distance = 1
                 mouse_time = time.monotonic_ns()
-                self.move_mouse(x * dt, y * dt, wheel * dt)
+                self.move_mouse(x * distance, y * distance, wheel)
+                print('dt {}, distance {}'.format(dt // 1000, distance))
+                if mouse_speed < 60:
+                    mouse_speed += 1
