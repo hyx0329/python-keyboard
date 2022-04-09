@@ -12,6 +12,8 @@ L3B = LAYER_TAP(3, B)
 LSFT4 = LAYER_MODS(4, MODS(LSHIFT))
 RSFT4 = LAYER_MODS(4, MODS(RSHIFT))
 L5S = LAYER_TAP(5, S)
+L5ON = LAYER_ON(5, ON_RELEASE)
+L5OFF = LAYER_OFF(5, ON_RELEASE)
 
 # Semicolon & Ctrl
 SCC = MODS_TAP(MODS(RCTRL), ';')
@@ -39,7 +41,7 @@ keyboard.keymap = (
     # layer 2
     (
         '`',  F1,  F2,  F3,  F4,  F5,  F6,  F7,  F8,  F9, F10, F11, F12, DEL,
-        ___, ___, ___, ___, ___, ___,HOME,PGUP, ___, ___,SINS,AUDIO_VOL_DOWN,AUDIO_VOL_UP,AUDIO_MUTE,
+        ___, ___, ___, ___, ___,L5ON,HOME,PGUP, ___, ___,SINS,AUDIO_VOL_DOWN,AUDIO_VOL_UP,AUDIO_MUTE,
         ___, ___, ___, ___, ___, ___,LEFT,DOWN, UP,RIGHT, ___, ___,      ___,
         ___, ___, ___, ___, ___, ___,PGDN,END, ___, ___, ___,           ___,
         ___, ___, ___,                ___,               ___, ___, ___,  ___
@@ -65,11 +67,11 @@ keyboard.keymap = (
 
     # layer 5
     (
-        ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___,
-        ___, ___, ___, ___, ___, ___,MS_W_UP,MS_UL,MS_UP,MS_UR, ___, ___, ___, ___,
-        ___, ___, ___, ___, ___, ___,MS_BTN1,MS_LT,MS_DN,MS_RT,MS_BTN2, ___,      ___,
-        ___, ___, ___, ___, ___, ___,MS_W_DN,MS_DL,MS_DN,MS_DR, ___,           ___,
-        ___, ___, ___,                ___,               ___, ___, ___,  ___
+      L5OFF,  NO,  NO,  NO,  NO,  NO,  NO,  NO,  NO,  NO,  NO,  NO,  NO,  NO,
+         NO,  NO,  NO,  NO,  NO,  NO,MS_W_UP,MS_UL,MS_UP,MS_UR, NO,  NO,  NO, NO,
+         NO,MS_ACC,MS_ACC,MS_ACC,MS_ACC, NO,MS_BTN1,MS_LT,MS_DN,MS_RT, NO,  NO, MS_BTN2,
+         NO,  NO,  NO,  NO,  NO,  NO,MS_W_DN,MS_DL,MS_DN,MS_DR,  NO,          NO,
+         NO,  NO,  NO,               MS_BTN1,                NO,  NO,  NO,   NO
     ),
 )
 
@@ -119,7 +121,7 @@ keyboard.pairs_handler = pairs_handler
 # LCTRL(53)  LGUI(54)  LALT(55)               SPACE(56)          RALT(57)  MENU(58)  Fn(59)  RCTRL(60)
 
 # Pairs: J & K, U & I
-keyboard.pairs = [{35, 36}, {20, 19}]
+# keyboard.pairs = [{35, 36}, {20, 19}]
 
 # keyboard.verbose = False
 
