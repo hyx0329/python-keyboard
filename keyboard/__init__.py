@@ -410,7 +410,7 @@ class Keyboard:
 		matrix = self.matrix
 		dev = Device(self)
 		keys = [0] * matrix.keys
-		ms = matrix.ms
+		ms = lambda x: matrix.ms(x & 0x7FFFFFFF)
 		last_time = 0
 		mouse_action = 0
 		mouse_time = 0
