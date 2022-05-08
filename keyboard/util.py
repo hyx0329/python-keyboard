@@ -4,7 +4,7 @@ import supervisor
 
 def usb_is_connected():
     if hasattr(supervisor.runtime, 'usb_connected'):
-        return supervisor.usb_connected
+        return supervisor.runtime.usb_connected
 
     @micropython.asm_thumb
     def mem(r0):

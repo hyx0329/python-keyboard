@@ -37,16 +37,28 @@ def macro_handler(dev, n, is_down):
 	else:
 		log('You released macro #{}\n'.format(n))
 
+def switch_storage(status):
+	if 0 == status:
+		try:
+			storage.disable_usb_drive()
+		except AttributeError:
+			storage.remount('/', 0)
+	elif 1 == status:
+		try:
+			storage.enable_usb_drive()
+		except AttributeError:
+			storage.remount('/', 1)
+
 def pairs_handler(dev, n):
 	if n == 0:
-		dev.kbd.log('Power-off pair key detected\n')
+		dev.kbd.log('Power-off pair key detected, shutting down\n')
 		microcontroller.reset()
 	elif n == 1:
-		dev.kbd.log('Remount storage read-write\n')
-		storage.remount('/', 1)
+		dev.kbd.log('Enable storage manipulation\n')
+		switch_storage(0)
 	elif n == 2:
-		log('Remount storage read-only\n')
-		storage.remount('/', 0)
+		log('Disable storage manipulation\n')
+		switch_storage(1)
 	else:
 		dev.kbd.log('You just triggered pair keys #{}\n'.format(n))
 
