@@ -533,9 +533,13 @@ MODS_TAP = lambda mods, key: ACTION(ACT_MODS_TAP, (mods << 8) | get_action_code(
 MOUSEKEY = lambda key: ACTION(ACT_MOUSEKEY, key)
 
 LAYER_BITOP = lambda op, part, bits, on: ACTION(ACT_LAYER, op<<10|on<<8|part<<5|(bits&0x1f))
+LAYER_BIT_AND = lambda part, bits, on: LAYER_BITOP(OP_BIT_AND, part, bits, on)
+LAYER_BIT_OR = lambda part, bits, on: LAYER_BITOP(OP_BIT_OR, part, bits, on)
 LAYER_BIT_XOR = lambda part, bits, on: LAYER_BITOP(OP_BIT_XOR, part, bits, on)
-LAYER_INVERT = lambda layer, on: LAYER_BIT_XOR(layer/4,   1<<(layer%4),  on)
+LAYER_INVERT = lambda layer, on: LAYER_BIT_XOR(layer//4, 1 << (layer % 4), on)
 LAYER_TOGGLE = lambda layer: LAYER_INVERT(layer, ON_RELEASE)
+LAYER_ON = lambda layer, on: LAYER_BIT_OR(layer//4, 1 << (layer % 4), on)
+LAYER_OFF = lambda layer, on: LAYER_BIT_AND(layer//4, ~(1 << (layer % 4)), on)
 
 LAYER_TAP = lambda layer, key=NO: ACTION(ACT_LAYER_TAP, (layer << 8) | get_action_code(key))
 LAYER_TAP_TOGGLE = lambda layer: LAYER_TAP(layer, OP_TAP_TOGGLE)
@@ -561,12 +565,13 @@ MS_DL = MOUSEKEY(7 << 8)
 MS_DR = MOUSEKEY(8 << 8)
 MS_W_UP = MOUSEKEY(9 << 8)
 MS_W_DN = MOUSEKEY(10 << 8)
+MS_ACC = MOUSEKEY(11 << 8)
 
 MS_MOVEMENT = (
-	(0, 0, 0),
-	(0, -2, 0), (0, 2, 0), (-2, 0, 0), (2, 0, 0),
-	(-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0),
-	(0, 0, 1), (0, 0, -1)
+    (0, 0, 0),
+    (0, -1, 0), (0, 1, 0), (-1, 0, 0), (1, 0, 0),
+    (-1, -1, 0), (1, -1, 0), (-1, 1, 0), (1, 1, 0),
+    (0, 0, 1), (0, 0, -1)
 )
 
 MACRO = lambda n: ACTION(ACT_MACRO, n)

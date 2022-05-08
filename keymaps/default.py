@@ -1,6 +1,6 @@
 from keyboard.action_code import *
 
-
+NAK = NO  # no action
 ___  = TRANSPARENT
 BOOT = BOOTLOADER
 PWDN = SHUTDOWN
@@ -8,6 +8,8 @@ FNL1 = LAYER_TAP(1)
 L2D = LAYER_TAP(2, D)
 L3B = LAYER_TAP(3, B)
 L5S = LAYER_TAP(5, S)
+L5ON = LAYER_ON(5, ON_RELEASE)
+L5OFF = LAYER_OFF(5, ON_RELEASE)
 
 LSFT4 = LAYER_MODS(4, MODS(LSHIFT))
 RSFT4 = LAYER_MODS(4, MODS(RSHIFT))
@@ -39,7 +41,7 @@ kb_layer1_function = (
 # layer 2
 kb_layer2_media = (
 	'`',  F1,  F2,  F3,  F4,  F5,  F6,  F7,  F8,  F9, F10, F11, F12, DEL,
-	___, ___, ___, ___, ___, ___,HOME,PGUP, INSERT, ___,SINS,AUDIO_VOL_DOWN,AUDIO_VOL_UP,AUDIO_MUTE,
+	___, ___, ___, ___, ___, L5ON,HOME,PGUP, INSERT, ___,SINS,AUDIO_VOL_DOWN,AUDIO_VOL_UP,AUDIO_MUTE,
 	___, ___, ___, ___, ___, ___,LEFT,DOWN, UP,RIGHT, ___, ___,      ___,
 	___, ___, ___, ___, ___, ___,PGDN,END, ___, ___, ___,           ___,
 	___, ___, ___,                ___,               ___, ___, ___,  ___
@@ -65,11 +67,11 @@ kb_layer4_restore = (
 
 # layer 5 for mouse control
 kb_layer5_mouse = (
-	___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___, ___,
-	___, ___, ___, ___, ___, ___,MS_W_UP,MS_UL,MS_UP,MS_UR, ___, ___, ___, ___,
-	___, ___, ___, ___, ___, ___,MS_BTN1,MS_LT,MS_DN,MS_RT,MS_BTN2, ___,      ___,
-	___, ___, ___, ___, ___, ___,MS_W_DN,MS_DL,MS_DN,MS_DR, ___,           ___,
-	___, ___, ___,                ___,               ___, ___, ___,  ___
+	L5OFF, NAK, NAK, NAK, NAK, NAK, NAK, NAK, NAK, NAK, NAK, NAK, NAK, NAK,
+	NAK, NAK, NAK, NAK, NAK, NAK,MS_W_UP,MS_UL,MS_UP,MS_UR, NAK, NAK, NAK, NAK,
+	NAK, NAK, NAK, NAK, NAK, NAK,MS_BTN1,MS_LT,MS_DN,MS_RT,MS_BTN2, NAK, MS_BTN2,
+	NAK, NAK, NAK, NAK, NAK, NAK,MS_W_DN,MS_DL,MS_DN,MS_DR, NAK,           NAK,
+	NAK, NAK, NAK,                MS_BTN1,               NAK, NAK, NAK,  NAK
 )
 
 # compose up
