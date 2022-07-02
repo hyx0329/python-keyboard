@@ -1,0 +1,871 @@
+From 53a8d80706dc8aa3941f2a65f895766fb69e464d Mon Sep 17 00:00:00 2001
+From: hyx0329 <hyx0329@163.com>
+Date: Sat, 2 Jul 2022 00:55:06 +0800
+Subject: [PATCH 6/6] add matrix module
+
++ Adapt to CPY 7.x
+
+Signed-off-by: hyx0329 <hyx0329@163.com>
+---
+ .../makerdiary_m60_keyboard/mpconfigboard.mk  |   1 +
+ ports/nrf/common-hal/matrix/Matrix.c          | 304 ++++++++++++++++++
+ ports/nrf/common-hal/matrix/Matrix.h          |  38 +++
+ ports/nrf/common-hal/matrix/__init__.c        |   0
+ py/circuitpy_defns.mk                         |   7 +
+ py/circuitpy_mpconfig.h                       |  10 +-
+ py/circuitpy_mpconfig.mk                      |   3 +
+ shared-bindings/matrix/Matrix.c               | 269 ++++++++++++++++
+ shared-bindings/matrix/Matrix.h               |  54 ++++
+ shared-bindings/matrix/__init__.c             |  47 +++
+ shared-module/matrix/Matrix.c                 |   0
+ shared-module/matrix/__init__.c               |   0
+ 12 files changed, 732 insertions(+), 1 deletion(-)
+ create mode 100644 ports/nrf/common-hal/matrix/Matrix.c
+ create mode 100644 ports/nrf/common-hal/matrix/Matrix.h
+ create mode 100644 ports/nrf/common-hal/matrix/__init__.c
+ create mode 100644 shared-bindings/matrix/Matrix.c
+ create mode 100644 shared-bindings/matrix/Matrix.h
+ create mode 100644 shared-bindings/matrix/__init__.c
+ create mode 100644 shared-module/matrix/Matrix.c
+ create mode 100644 shared-module/matrix/__init__.c
+
+diff --git a/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk b/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk
+index 5371b6fff..1ff41d736 100644
+--- a/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk
++++ b/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk
+@@ -10,6 +10,7 @@ EXTERNAL_FLASH_DEVICES = "MX25R6435F"
+ 
+ CIRCUITPY_ENABLE_MPY_NATIVE = 1
+ 
++CIRCUITPY_MATRIX = 1
+ CIRCUITPY_PULSEIO = 0 					# GPIOTE
+ CIRCUITPY_NEOPIXEL_WRITE = 0
+ CIRCUITPY_GAMEPAD = 0
+diff --git a/ports/nrf/common-hal/matrix/Matrix.c b/ports/nrf/common-hal/matrix/Matrix.c
+new file mode 100644
+index 000000000..11e44dbda
+--- /dev/null
++++ b/ports/nrf/common-hal/matrix/Matrix.c
+@@ -0,0 +1,304 @@
++
++#include <stdint.h>
++#include "nrfx.h"
++#include "nrfx_gpiote.h"
++#include "supervisor/port.h"
++#include "common-hal/matrix/Matrix.h"
++#include "shared-bindings/time/__init__.h"
++#include "nrf_qspi.h"
++
++#define MATRIX_ROWS 8
++#define MATRIX_COLS 8
++
++static uint8_t row_io[MATRIX_ROWS] = {5, 6, 7, 8, 41, 40, 12, 11};
++static uint8_t col_io[MATRIX_COLS] = {19, 20, 21, 22, 23, 24, 25, 26};
++
++volatile uint32_t matrix_interrupt_status = 0;
++static int matrix_is_inited = 0;
++
++static uint32_t read_cols(void);
++static void init_cols(void);
++static void enable_interrupt(void);
++static void disable_interrupt(void);
++static void init_rows(void);
++static void unselect_rows(void);
++static void select_rows(void);
++static void unselect_row(uint8_t row);
++static void select_row(uint8_t row);
++static void deinit_rows(void);
++static void deinit_cols(void);
++
++void matrix_event_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action);
++
++
++void matrix_event_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
++{
++    // NRF_P0->OUTSET = 1 << 29;
++    matrix_interrupt_status = 1;
++}
++
++int common_hal_matrix_matrix_init(matrix_matrix_obj_t *self)
++{
++    if (matrix_is_inited)
++    {
++        deinit_rows();
++        deinit_cols();
++    }
++    init_rows();
++    init_cols();
++    matrix_is_inited = 1;
++    return 0;
++}
++
++int common_hal_matrix_matrix_deinit(matrix_matrix_obj_t *self)
++{
++    deinit_rows();
++    deinit_cols();
++    matrix_is_inited = 0;
++    return 0;
++}
++
++uint32_t common_hal_matrix_matrix_scan(matrix_matrix_obj_t *self)
++{
++    uint32_t active = 0;
++    uint32_t t = port_get_raw_ticks(NULL);  // unit: 1 / 1024 of a second
++    uint32_t debounce_ticks = self->debounce_ticks;
++
++    for (unsigned row = 0; row < sizeof(row_io); row++) {
++        select_row(row);
++        NRFX_DELAY_US(1);
++        uint32_t cols_value = read_cols();
++        unselect_row(row);
++
++        uint32_t value = self->value[row];
++        uint32_t mask = cols_value ^ value;
++        uint32_t inverted_bits = 0;
++        uint8_t col = 0;
++        uint32_t col_mask = 1;
++        while (mask >= col_mask) {
++            if (mask & col_mask) {
++                uint8_t key = row * MATRIX_COLS + col;
++                if (cols_value & col_mask) {
++                    // key down
++                    if ((uint32_t)(t - self->t1[key]) > debounce_ticks) {
++                        inverted_bits |= col_mask;
++                        self->queue[self->head & MATRIX_QUEUE_MASK] = key;
++                        self->head++;
++                        self->t0[key] = t;
++                    }
++                } else {
++                    // key up
++                    if ((uint32_t)(t - self->t0[key]) > debounce_ticks) {
++                        inverted_bits |= col_mask;
++                        self->queue[self->head & MATRIX_QUEUE_MASK] = 0x80 | key;
++                        self->head++;
++                        self->t1[key] = t;
++                    }
++                }
++            }
++            col++;
++            col_mask = 1 << col;
++        }
++        value = (value & ~inverted_bits) | (~value & inverted_bits);
++        active |= cols_value | value;
++        self->raw[row] = cols_value;
++        self->value[row] = value;
++    }
++
++    self->active = active;
++
++    return self->head - self->tail;
++}
++
++
++uint32_t common_hal_matrix_matrix_wait(matrix_matrix_obj_t *self, int timeout)
++{
++    uint64_t start_tick = port_get_raw_ticks(NULL);
++    // Adjust the delay to ticks vs ms.
++    int64_t remaining = timeout * 1024 / 1000;
++    uint64_t end_tick = start_tick + remaining;
++    uint32_t n = self->head - self->tail;
++    if (self->active) {
++        do {
++            uint32_t result = common_hal_matrix_matrix_scan(self);
++            if (result > n) {
++                n = result;
++                break;
++            }
++            matrix_interrupt_status = 0;
++            // select_rows();
++            for (unsigned row = 0; row < sizeof(row_io); row++) {
++                if (!self->raw[row]) {
++                    select_row(row);
++                }
++            }
++            enable_interrupt();
++            // uint32_t tick = remaining < 4 ? remaining : 4;
++            port_interrupt_after_ticks(4);
++            port_idle_until_interrupt();
++            disable_interrupt();
++            unselect_rows();
++            remaining = end_tick - port_get_raw_ticks(NULL);
++        } while (remaining > 1 || matrix_interrupt_status);
++    } else {
++        select_rows();
++        uint32_t cols = read_cols();
++        matrix_interrupt_status = 0;
++        if (!cols) {
++            enable_interrupt();
++            if (remaining == 0) {
++                remaining = 1024; // a seconds
++            }
++            port_interrupt_after_ticks(remaining);
++            port_idle_until_interrupt();
++            disable_interrupt();
++        }
++        unselect_rows();
++
++        if (cols || matrix_interrupt_status) {
++            n = common_hal_matrix_matrix_scan(self);
++        }
++    }
++
++    return n;
++}
++
++void common_hal_matrix_matrix_suspend(matrix_matrix_obj_t *self)
++{
++    // When USB is connected, do not suspend
++    if (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) {
++        return;
++    }
++
++    // turn off rgb matrix
++    nrf_gpio_cfg_default(36);
++
++    select_rows();
++
++    // make sure keys are released
++    uint32_t cols = read_cols();
++    uint32_t last;
++    do {
++        NRFX_DELAY_US(10000);
++        last = cols;
++        cols = read_cols();
++    } while (cols | last);
++
++    enable_interrupt();
++
++#if defined(MICROPY_QSPI_SCK)
++    if (NRF_QSPI->ENABLE) {
++        // csn-pins = <45> - keep CS high when QSPI is diabled
++        NRF_P1->OUTSET = 1 << 13;
++        NRF_P1->PIN_CNF[13] = 3;
++
++        *(volatile uint32_t *)0x40029010 = 1;
++        *(volatile uint32_t *)0x40029054 = 1;
++        NRF_QSPI->ENABLE = 0;
++    }
++#endif
++
++    NRF_POWER->GPREGRET = 0xFB;     // Fast Boot
++    NRF_POWER->SYSTEMOFF = 1;
++    NRFX_DELAY_US(10);
++    NVIC_SystemReset();
++}
++
++static void init_rows(void)
++{
++    for (int i = 0; i < MATRIX_ROWS; i++)
++    {
++        nrf_gpio_cfg_output(row_io[i]);
++        nrf_gpio_pin_write(row_io[i], 1);
++    }
++}
++
++static void init_cols(void)
++{
++    nrfx_gpiote_in_config_t config = NRFX_GPIOTE_CONFIG_IN_SENSE_HITOLO(false);
++    config.pull = NRF_GPIO_PIN_PULLUP;
++
++    if ( !nrfx_gpiote_is_init() ) {
++        nrfx_gpiote_init(NRFX_GPIOTE_CONFIG_IRQ_PRIORITY);
++    }
++
++    for (int i = 0; i < MATRIX_COLS; i++)
++    {
++        nrfx_gpiote_in_init(col_io[i], &config, matrix_event_handler);
++    }
++}
++
++static void deinit_rows(void)
++{
++    for (int i = 0; i < MATRIX_ROWS; i++)
++    {
++        nrf_gpio_cfg_default(row_io[i]);
++    }
++}
++
++static void deinit_cols(void)
++{
++    for (int i = 0; i < MATRIX_COLS; i++)
++    {
++        nrfx_gpiote_in_uninit(col_io[i]);
++    }
++}
++
++static void enable_interrupt(void)
++{
++    for (int i = 0; i < MATRIX_COLS; i++)
++    {
++        nrfx_gpiote_in_event_enable(col_io[i], true);
++    }
++}
++
++static void disable_interrupt(void)
++{
++    for (int i = 0; i < MATRIX_COLS; i++)
++    {
++        nrfx_gpiote_in_event_disable(col_io[i]);
++    }
++}
++
++/* Returns status of switches(1:on, 0:off) */
++static uint32_t read_cols(void)
++{
++    uint32_t cols = 0;
++
++    for (int i = 0; i < MATRIX_COLS; i++)
++    {
++        uint32_t value = nrf_gpio_pin_read(col_io[i]);
++        value = value ? 0 : (1 << i);
++        cols |= value;
++    }
++    return cols;
++}
++
++/*
++ * Row pin configuration
++ */
++static void unselect_rows(void)
++{
++    for (int i = 0; i < MATRIX_ROWS; i++)
++    {
++        nrf_gpio_pin_write(row_io[i], 1);
++    }
++}
++
++static void select_rows(void)
++{
++    for (int i = 0; i < MATRIX_ROWS; i++)
++    {
++        nrf_gpio_pin_write(row_io[i], 0);
++    }
++}
++
++static void unselect_row(uint8_t row)
++{
++    nrf_gpio_pin_write(row_io[row], 1);
++}
++
++static void select_row(uint8_t row)
++{
++    nrf_gpio_pin_write(row_io[row], 0);
++}
+diff --git a/ports/nrf/common-hal/matrix/Matrix.h b/ports/nrf/common-hal/matrix/Matrix.h
+new file mode 100644
+index 000000000..e26fef7ff
+--- /dev/null
++++ b/ports/nrf/common-hal/matrix/Matrix.h
+@@ -0,0 +1,38 @@
++/*
++ * This file is part of the Micro Python project, http://micropython.org/
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2020 Yihui Xiong
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++ * THE SOFTWARE.
++ */
++
++#ifndef MICROPY_INCLUDED_COMMON_HAL_MATRIX_MATRIX_H
++#define MICROPY_INCLUDED_COMMON_HAL_MATRIX_MATRIX_H
++
++#include "shared-bindings/matrix/Matrix.h"
++
++int common_hal_matrix_matrix_init(matrix_matrix_obj_t *self);
++int common_hal_matrix_matrix_deinit(matrix_matrix_obj_t *self);
++uint32_t common_hal_matrix_matrix_scan(matrix_matrix_obj_t *self);
++uint32_t common_hal_matrix_matrix_wait(matrix_matrix_obj_t *self, int timeout);
++void common_hal_matrix_matrix_suspend(matrix_matrix_obj_t *self);
++
++#endif
+diff --git a/ports/nrf/common-hal/matrix/__init__.c b/ports/nrf/common-hal/matrix/__init__.c
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/py/circuitpy_defns.mk b/py/circuitpy_defns.mk
+index 0ae3341b3..b5b349e61 100644
+--- a/py/circuitpy_defns.mk
++++ b/py/circuitpy_defns.mk
+@@ -211,6 +211,9 @@ endif
+ ifeq ($(CIRCUITPY_MATH),1)
+ SRC_PATTERNS += math/%
+ endif
++ifeq ($(CIRCUITPY_MATRIX),1)
++SRC_PATTERNS += matrix/%
++endif
+ ifeq ($(CIRCUITPY_MEMORYMONITOR),1)
+ SRC_PATTERNS += memorymonitor/%
+ endif
+@@ -407,6 +410,8 @@ SRC_COMMON_HAL_ALL = \
+ 	gnss/SatelliteSystem.c \
+ 	i2cperipheral/I2CPeripheral.c \
+ 	i2cperipheral/__init__.c \
++	matrix/__init__.c \
++	matrix/Matrix.c \
+ 	microcontroller/Pin.c \
+ 	microcontroller/Processor.c \
+ 	microcontroller/__init__.c \
+@@ -570,6 +575,8 @@ SRC_SHARED_MODULE_ALL = \
+ 	keypad/KeyMatrix.c \
+ 	keypad/ShiftRegisterKeys.c \
+ 	keypad/Keys.c \
++	matrix/__init__.c \
++	matrix/Matrix.c \
+ 	memorymonitor/__init__.c \
+ 	memorymonitor/AllocationAlarm.c \
+ 	memorymonitor/AllocationSize.c \
+diff --git a/py/circuitpy_mpconfig.h b/py/circuitpy_mpconfig.h
+index 1c4430525..d22c7876d 100644
+--- a/py/circuitpy_mpconfig.h
++++ b/py/circuitpy_mpconfig.h
+@@ -325,6 +325,13 @@ typedef long mp_off_t;
+ #define KEYPAD_ROOT_POINTERS
+ #endif
+ 
++#if CIRCUITPY_MATRIX
++extern const struct _mp_obj_module_t matrix_module;
++#define MATRIX_MODULE            { MP_OBJ_NEW_QSTR(MP_QSTR_matrix), (mp_obj_t)&matrix_module  },
++#else
++#define MATRIX_MODULE
++#endif
++
+ #if CIRCUITPY_MEMORYMONITOR
+ #define MEMORYMONITOR_ROOT_POINTERS mp_obj_t active_allocationsizes; \
+     mp_obj_t active_allocationalarms;
+@@ -391,7 +398,8 @@ extern const struct _mp_obj_module_t nvm_module;
+ // Some of these definitions will be blank depending on what is turned on and off.
+ // Some are omitted because they're in MICROPY_PORT_BUILTIN_MODULE_WEAK_LINKS above.
+ 
+-#define MICROPY_PORT_BUILTIN_MODULES_STRONG_LINKS
++#define MICROPY_PORT_BUILTIN_MODULES_STRONG_LINKS \
++    MATRIX_MODULE
+ 
+ // If weak links are enabled, just include strong links in the main list of modules,
+ // and also include the underscore alternate names.
+diff --git a/py/circuitpy_mpconfig.mk b/py/circuitpy_mpconfig.mk
+index 189954109..8e90d97e3 100644
+--- a/py/circuitpy_mpconfig.mk
++++ b/py/circuitpy_mpconfig.mk
+@@ -264,6 +264,9 @@ CFLAGS += -DCIRCUITPY_KEYPAD=$(CIRCUITPY_KEYPAD)
+ CIRCUITPY_MATH ?= 1
+ CFLAGS += -DCIRCUITPY_MATH=$(CIRCUITPY_MATH)
+ 
++CIRCUITPY_MATRIX ?= 1
++CFLAGS += -DCIRCUITPY_MATRIX=$(CIRCUITPY_MATRIX)
++
+ CIRCUITPY_MEMORYMONITOR ?= 0
+ CFLAGS += -DCIRCUITPY_MEMORYMONITOR=$(CIRCUITPY_MEMORYMONITOR)
+ 
+diff --git a/shared-bindings/matrix/Matrix.c b/shared-bindings/matrix/Matrix.c
+new file mode 100644
+index 000000000..9e132de16
+--- /dev/null
++++ b/shared-bindings/matrix/Matrix.c
+@@ -0,0 +1,269 @@
++/*
++ * This file is part of the Micro Python project, http://micropython.org/
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2020 Yihui Xiong
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++ * THE SOFTWARE.
++ */
++
++#include "py/obj.h"
++#include "py/objproperty.h"
++#include "py/runtime.h"
++#include "py/objarray.h"
++
++#include "common-hal/matrix/Matrix.h"
++#include "shared-bindings/matrix/Matrix.h"
++#include "supervisor/port.h"
++
++//| class Matrix:
++//|     """keyboard matrix"""
++//|
++STATIC mp_obj_t matrix_matrix_make_new(const mp_obj_type_t *type,
++    size_t n_args, size_t n_kw, const mp_obj_t *args) {
++    matrix_matrix_obj_t *self = m_new_obj(matrix_matrix_obj_t);
++    self->base.type = &matrix_matrix_type;
++    self->head = 0;
++    self->tail = 0;
++    self->size = sizeof(self->queue) / sizeof(self->queue[0]);
++    self->debounce_ticks = 16;
++
++    common_hal_matrix_matrix_init(self);
++
++    return MP_OBJ_FROM_PTR(self);
++}
++
++//|     rows: int = ...
++//|     """The row of the matrix"""
++//|
++STATIC mp_obj_t matrix_matrix_get_rows(mp_obj_t self_in) {
++    return MP_OBJ_NEW_SMALL_INT(8);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_get_rows_obj, matrix_matrix_get_rows);
++
++const mp_obj_property_t matrix_matrix_rows_obj = {
++    .base.type = &mp_type_property,
++    .proxy = {(mp_obj_t)&matrix_matrix_get_rows_obj,
++              mp_const_none,
++              mp_const_none},
++};
++
++//|     cols: int = ...
++//|     """The column of the matrix"""
++//|
++STATIC mp_obj_t matrix_matrix_get_cols(mp_obj_t self_in) {
++    return MP_OBJ_NEW_SMALL_INT(8);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_get_cols_obj, matrix_matrix_get_cols);
++const mp_obj_property_t matrix_matrix_cols_obj = {
++    .base.type = &mp_type_property,
++    .proxy = {(mp_obj_t)&matrix_matrix_get_cols_obj,
++              mp_const_none,
++              mp_const_none},
++};
++
++//|     keys: int = ...
++//|     """The number of the matrix keys"""
++//|
++STATIC mp_obj_t matrix_matrix_get_keys(mp_obj_t self_in) {
++    return MP_OBJ_NEW_SMALL_INT(64);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_get_keys_obj, matrix_matrix_get_keys);
++const mp_obj_property_t matrix_matrix_keys_obj = {
++    .base.type = &mp_type_property,
++    .proxy = {(mp_obj_t)&matrix_matrix_get_keys_obj,
++              mp_const_none,
++              mp_const_none},
++};
++
++STATIC mp_obj_t matrix_matrix_get_debounce_time(mp_obj_t self_in) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    return MP_OBJ_NEW_SMALL_INT(self->debounce_ticks * 1000 / 1024);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_get_debounce_time_obj, matrix_matrix_get_debounce_time);
++
++
++STATIC mp_obj_t matrix_matrix_set_debounce_time(mp_obj_t self_in, mp_obj_t value) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    int t = mp_obj_get_int(value);
++    t = t < 0 ? 0 : t;
++    self->debounce_ticks = t * 1024 / 1000;
++    return mp_const_none;
++}
++MP_DEFINE_CONST_FUN_OBJ_2(matrix_matrix_set_debounce_time_obj, matrix_matrix_set_debounce_time);
++
++const mp_obj_property_t matrix_matrix_debounce_time_obj = {
++    .base.type = &mp_type_property,
++    .proxy = {(mp_obj_t)&matrix_matrix_get_debounce_time_obj,
++              (mp_obj_t)&matrix_matrix_set_debounce_time_obj,
++              mp_const_none},
++};
++
++STATIC mp_obj_t matrix_matrix_scan(mp_obj_t self_in) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    uint8_t n = common_hal_matrix_matrix_scan(self);
++    return MP_OBJ_NEW_SMALL_INT(n);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_scan_obj, matrix_matrix_scan);
++
++
++STATIC mp_obj_t matrix_matrix_suspend(mp_obj_t self_in) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    common_hal_matrix_matrix_suspend(self);
++    return mp_const_none;
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_suspend_obj, matrix_matrix_suspend);
++
++
++STATIC mp_obj_t matrix_matrix_wait(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
++    enum { ARG_timeout };
++    static const mp_arg_t allowed_args[] = {
++        { MP_QSTR_timeout, MP_ARG_INT, {.u_int = 0} },
++    };
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
++
++    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
++    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
++
++    int timeout = args[ARG_timeout].u_int;
++    // if (timeout <= 0) {
++    //     return MP_OBJ_NEW_SMALL_INT(common_hal_matrix_matrix_scan(self));
++    // }
++
++    return MP_OBJ_NEW_SMALL_INT(common_hal_matrix_matrix_wait(self, timeout));
++}
++MP_DEFINE_CONST_FUN_OBJ_KW(matrix_matrix_wait_obj, 1, matrix_matrix_wait);
++
++STATIC mp_obj_t matrix_matrix_view(mp_obj_t self_in, mp_obj_t n) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    uint8_t i = mp_obj_get_int(n);
++    uint8_t value = self->queue[(self->tail + i) & MATRIX_QUEUE_MASK];
++    return MP_OBJ_NEW_SMALL_INT(value);
++}
++MP_DEFINE_CONST_FUN_OBJ_2(matrix_matrix_view_obj, matrix_matrix_view);
++
++STATIC mp_obj_t matrix_matrix_get_keydown_time(mp_obj_t self_in, mp_obj_t n) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    uint8_t key = mp_obj_get_int(n);
++    uint32_t value = self->t0[key];
++    return mp_obj_new_int_from_uint(value);
++}
++MP_DEFINE_CONST_FUN_OBJ_2(matrix_matrix_get_keydown_time_obj, matrix_matrix_get_keydown_time);
++
++STATIC mp_obj_t matrix_matrix_get_keyup_time(mp_obj_t self_in, mp_obj_t n) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    uint8_t key = mp_obj_get_int(n);
++    uint32_t value = self->t1[key];
++    return mp_obj_new_int_from_uint(value);
++}
++MP_DEFINE_CONST_FUN_OBJ_2(matrix_matrix_get_keyup_time_obj, matrix_matrix_get_keyup_time);
++
++STATIC mp_obj_t matrix_matrix_ms(mp_obj_t self_in, mp_obj_t tick) {
++    int t = mp_obj_get_int(tick);
++    t = t * 1000 / 1024;
++    return mp_obj_new_int(t);
++}
++MP_DEFINE_CONST_FUN_OBJ_2(matrix_matrix_ms_obj, matrix_matrix_ms);
++
++STATIC mp_obj_t matrix_matrix_time(mp_obj_t self_in) {
++    uint32_t t = port_get_raw_ticks(NULL);
++    return mp_obj_new_int_from_uint(t);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_time_obj, matrix_matrix_time);
++
++STATIC mp_obj_t matrix_matrix_get(mp_obj_t self_in) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    uint8_t value = self->queue[self->tail & MATRIX_QUEUE_MASK];
++    self->tail += 1;
++    return MP_OBJ_NEW_SMALL_INT(value);
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_get_obj, matrix_matrix_get);
++
++STATIC mp_obj_t matrix_matrix_deinit(mp_obj_t self_in) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    common_hal_matrix_matrix_deinit(self);
++    return mp_const_none;
++}
++MP_DEFINE_CONST_FUN_OBJ_1(matrix_matrix_deinit_obj, matrix_matrix_deinit);
++
++STATIC mp_obj_t matrix_matrix_subscr(mp_obj_t self_in, mp_obj_t index_in, mp_obj_t value) {
++    if (value == MP_OBJ_NULL) {
++        // delete item
++        // slice deletion
++        return MP_OBJ_NULL; // op not supported
++    } else {
++        matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++        if (mp_obj_is_type(index_in, &mp_type_slice)) {
++            mp_raise_NotImplementedError(translate("Slices not supported"));
++        } else {
++            // Single index rather than slice.
++            size_t index = mp_get_index(self->base.type, (self->head - self->tail), index_in, false);
++            if (value == MP_OBJ_SENTINEL) {
++                // load
++                uint8_t value_out = self->queue[(self->tail + index) & MATRIX_QUEUE_MASK];
++                return MP_OBJ_NEW_SMALL_INT(value_out);
++            } else {
++                mp_raise_AttributeError(translate("Read-only"));
++            }
++        }
++    }
++}
++
++STATIC mp_obj_t matrix_matrix_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
++    matrix_matrix_obj_t *self = MP_OBJ_TO_PTR(self_in);
++    uint32_t len = self->head - self->tail;
++    switch (op) {
++        case MP_UNARY_OP_BOOL: return mp_obj_new_bool(len != 0);
++        case MP_UNARY_OP_LEN: return MP_OBJ_NEW_SMALL_INT(len);
++        default: return MP_OBJ_NULL; // op not supported
++    }
++}
++
++STATIC const mp_rom_map_elem_t matrix_matrix_locals_dict_table[] = {
++    { MP_ROM_QSTR(MP_QSTR_scan), MP_ROM_PTR(&matrix_matrix_scan_obj) },
++    { MP_ROM_QSTR(MP_QSTR_wait), MP_ROM_PTR(&matrix_matrix_wait_obj) },
++    { MP_ROM_QSTR(MP_QSTR_view), MP_ROM_PTR(&matrix_matrix_view_obj) },
++    { MP_ROM_QSTR(MP_QSTR_get), MP_ROM_PTR(&matrix_matrix_get_obj) },
++    { MP_ROM_QSTR(MP_QSTR_get_keydown_time), MP_ROM_PTR(&matrix_matrix_get_keydown_time_obj) },
++    { MP_ROM_QSTR(MP_QSTR_get_keyup_time), MP_ROM_PTR(&matrix_matrix_get_keyup_time_obj) },
++    { MP_ROM_QSTR(MP_QSTR_time), MP_ROM_PTR(&matrix_matrix_time_obj) },
++    { MP_ROM_QSTR(MP_QSTR_ms), MP_ROM_PTR(&matrix_matrix_ms_obj) },
++    { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&matrix_matrix_deinit_obj) },
++    { MP_ROM_QSTR(MP_QSTR_suspend), MP_ROM_PTR(&matrix_matrix_suspend_obj) },
++
++    { MP_ROM_QSTR(MP_QSTR_rows), MP_ROM_PTR(&matrix_matrix_rows_obj) },
++    { MP_ROM_QSTR(MP_QSTR_cols), MP_ROM_PTR(&matrix_matrix_cols_obj) },
++    { MP_ROM_QSTR(MP_QSTR_keys), MP_ROM_PTR(&matrix_matrix_keys_obj) },
++    { MP_ROM_QSTR(MP_QSTR_debounce_time), MP_ROM_PTR(&matrix_matrix_debounce_time_obj) },
++
++};
++STATIC MP_DEFINE_CONST_DICT(matrix_matrix_locals_dict, matrix_matrix_locals_dict_table);
++
++const mp_obj_type_t matrix_matrix_type = {
++    { &mp_type_type },
++    .flags = MP_TYPE_FLAG_EXTENDED,
++    .name = MP_QSTR_Matrix,
++    .make_new = matrix_matrix_make_new,
++    .locals_dict = (mp_obj_dict_t*)&matrix_matrix_locals_dict,
++    MP_TYPE_EXTENDED_FIELDS(
++        .subscr = matrix_matrix_subscr,
++        .unary_op = matrix_matrix_unary_op,
++        ),
++};
+diff --git a/shared-bindings/matrix/Matrix.h b/shared-bindings/matrix/Matrix.h
+new file mode 100644
+index 000000000..e7389dbce
+--- /dev/null
++++ b/shared-bindings/matrix/Matrix.h
+@@ -0,0 +1,54 @@
++/*
++ * This file is part of the Micro Python project, http://micropython.org/
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2020 Yihui Xiong
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++ * THE SOFTWARE.
++ */
++
++#ifndef MICROPY_INCLUDED_SHARED_BINDINGS_MATRIX_MATRIX_H
++#define MICROPY_INCLUDED_SHARED_BINDINGS_MATRIX_MATRIX_H
++
++#include <stdint.h>
++#include "py/obj.h"
++
++#define MATRIX_QUEUE_SIZE   (1 << 6)
++#define MATRIX_QUEUE_MASK   (MATRIX_QUEUE_SIZE - 1)
++
++extern const mp_obj_type_t matrix_matrix_type;
++
++typedef struct {
++    mp_obj_base_t base;
++    uint8_t queue[MATRIX_QUEUE_SIZE];
++    uint32_t head;
++    uint32_t tail;
++    uint32_t size;
++    uint32_t t;
++    uint32_t t0[64];
++    uint32_t t1[64];
++    uint32_t raw[8];
++    uint32_t value[8];
++    uint32_t active;
++    uint32_t debounce_ticks;
++} matrix_matrix_obj_t;
++
++
++#endif
+diff --git a/shared-bindings/matrix/__init__.c b/shared-bindings/matrix/__init__.c
+new file mode 100644
+index 000000000..e0ed76348
+--- /dev/null
++++ b/shared-bindings/matrix/__init__.c
+@@ -0,0 +1,47 @@
++/*
++ * This file is part of the MicroPython project, http://micropython.org/
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2020 Yihui Xiong
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++ * THE SOFTWARE.
++ */
++
++#include <stdint.h>
++
++#include "py/obj.h"
++#include "py/runtime.h"
++
++#include "shared-bindings/matrix/Matrix.h"
++
++//| """Low-level routines for keyboard matrix"""
++//|
++
++STATIC const mp_rom_map_elem_t matrix_module_globals_table[] = {
++    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_matrix) },
++    { MP_ROM_QSTR(MP_QSTR_Matrix), MP_ROM_PTR(&matrix_matrix_type) },
++};
++
++STATIC MP_DEFINE_CONST_DICT(matrix_module_globals, matrix_module_globals_table);
++
++const mp_obj_module_t matrix_module = {
++    .base = { &mp_type_module },
++    .globals = (mp_obj_dict_t*)&matrix_module_globals,
++};
+diff --git a/shared-module/matrix/Matrix.c b/shared-module/matrix/Matrix.c
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/shared-module/matrix/__init__.c b/shared-module/matrix/__init__.c
+new file mode 100644
+index 000000000..e69de29bb
+-- 
+2.37.0
+

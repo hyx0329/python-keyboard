@@ -1,0 +1,25 @@
+From 171d52d1330dd4b39cec65d0db1b479adc8db10a Mon Sep 17 00:00:00 2001
+From: Yihui Xiong <yihui.xiong@hotmail.com>
+Date: Tue, 28 Jul 2020 00:31:45 +0800
+Subject: [PATCH 2/6] not use NFC pins as GPIO
+
+---
+ ports/nrf/mpconfigport.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ports/nrf/mpconfigport.mk b/ports/nrf/mpconfigport.mk
+index 1a12c20f2..73377b2f4 100644
+--- a/ports/nrf/mpconfigport.mk
++++ b/ports/nrf/mpconfigport.mk
+@@ -69,7 +69,7 @@ NRF_DEFINES += -DNRF52840_XXAA -DNRF52840
+ # CircuitPython doesn't yet support NFC so force the NFC antenna pins to be GPIO.
+ # See https://github.com/adafruit/circuitpython/issues/1300
+ # Defined here because system_nrf52840.c doesn't #include any of our own include files.
+-CFLAGS += -DCONFIG_NFCT_PINS_AS_GPIOS
++# CFLAGS += -DCONFIG_NFCT_PINS_AS_GPIOS
+ 
+ else
+ ifeq ($(MCU_CHIP),nrf52833)
+-- 
+2.37.0
+

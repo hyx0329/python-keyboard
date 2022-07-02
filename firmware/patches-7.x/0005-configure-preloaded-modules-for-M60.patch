@@ -1,0 +1,30 @@
+From 925210865cb9a1ee003fd2874e91583e5c4bdd63 Mon Sep 17 00:00:00 2001
+From: hyx0329 <hyx0329@163.com>
+Date: Sat, 2 Jul 2022 00:51:47 +0800
+Subject: [PATCH 5/6] configure preloaded modules for M60
+
+Signed-off-by: hyx0329 <hyx0329@163.com>
+---
+ .../nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk  | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk b/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk
+index e7547af71..5371b6fff 100644
+--- a/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk
++++ b/ports/nrf/boards/makerdiary_m60_keyboard/mpconfigboard.mk
+@@ -9,3 +9,12 @@ QSPI_FLASH_FILESYSTEM = 1
+ EXTERNAL_FLASH_DEVICES = "MX25R6435F"
+ 
+ CIRCUITPY_ENABLE_MPY_NATIVE = 1
++
++CIRCUITPY_PULSEIO = 0 					# GPIOTE
++CIRCUITPY_NEOPIXEL_WRITE = 0
++CIRCUITPY_GAMEPAD = 0
++CIRCUITPY_AUDIOBUSIO = 0
++CIRCUITPY_AUDIOPWMIO = 0
++
++FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_BLE
++FROZEN_MPY_DIRS += $(TOP)/frozen/Adafruit_CircuitPython_HID
+-- 
+2.37.0
+

@@ -1,0 +1,32 @@
+From 0997aacc5011dd2fd30a1fe5229685c627004547 Mon Sep 17 00:00:00 2001
+From: hyx0329 <hyx0329@163.com>
+Date: Sat, 2 Jul 2022 00:35:27 +0800
+Subject: [PATCH 4/6] avoid infinite loop when error in safe mode
+
+Signed-off-by: hyx0329 <hyx0329@163.com>
+---
+ supervisor/shared/safe_mode.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/supervisor/shared/safe_mode.c b/supervisor/shared/safe_mode.c
+index 7922cffc2..b56902c95 100644
+--- a/supervisor/shared/safe_mode.c
++++ b/supervisor/shared/safe_mode.c
+@@ -119,12 +119,14 @@ void safe_mode_on_next_reset(safe_mode_t reason) {
+ 
+ // Don't inline this so it's easy to break on it from GDB.
+ void __attribute__((noinline,)) reset_into_safe_mode(safe_mode_t reason) {
++#if 0
+     if (current_safe_mode > BROWNOUT && reason > BROWNOUT) {
+         while (true) {
+             // This very bad because it means running in safe mode didn't save us. Only ignore brownout
+             // because it may be due to a switch bouncing.
+         }
+     }
++#endif
+ 
+     safe_mode_on_next_reset(reason);
+     reset_cpu();
+-- 
+2.37.0
+
