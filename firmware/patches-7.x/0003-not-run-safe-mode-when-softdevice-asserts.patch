@@ -1,7 +1,7 @@
 From df16acc0989d673b2caca2a5e43584cf691afa65 Mon Sep 17 00:00:00 2001
 From: Yihui Xiong <yihui.xiong@hotmail.com>
 Date: Thu, 6 Aug 2020 20:23:02 +0800
-Subject: [PATCH 3/6] not run safe mode when softdevice asserts
+Subject: [PATCH 3/9] not run safe mode when softdevice asserts
 
 ---
  ports/nrf/common-hal/_bleio/Adapter.c | 6 +++++-

@@ -1,7 +1,7 @@
 From 53a8d80706dc8aa3941f2a65f895766fb69e464d Mon Sep 17 00:00:00 2001
 From: hyx0329 <hyx0329@163.com>
 Date: Sat, 2 Jul 2022 00:55:06 +0800
-Subject: [PATCH 6/6] add matrix module
+Subject: [PATCH 6/9] add matrix module
 
 + Adapt to CPY 7.x
 

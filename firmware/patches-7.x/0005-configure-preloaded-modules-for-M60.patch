@@ -1,7 +1,7 @@
 From 925210865cb9a1ee003fd2874e91583e5c4bdd63 Mon Sep 17 00:00:00 2001
 From: hyx0329 <hyx0329@163.com>
 Date: Sat, 2 Jul 2022 00:51:47 +0800
-Subject: [PATCH 5/6] configure preloaded modules for M60
+Subject: [PATCH 5/9] configure preloaded modules for M60
 
 Signed-off-by: hyx0329 <hyx0329@163.com>
 ---

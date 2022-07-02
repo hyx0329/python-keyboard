@@ -1,7 +1,7 @@
 From 171d52d1330dd4b39cec65d0db1b479adc8db10a Mon Sep 17 00:00:00 2001
 From: Yihui Xiong <yihui.xiong@hotmail.com>
 Date: Tue, 28 Jul 2020 00:31:45 +0800
-Subject: [PATCH 2/6] not use NFC pins as GPIO
+Subject: [PATCH 2/9] not use NFC pins as GPIO
 
 ---
  ports/nrf/mpconfigport.mk | 2 +-

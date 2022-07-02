@@ -1,7 +1,7 @@
 From 6a9f8a05f785ec9f7c50440ca5d29bdf43716ed1 Mon Sep 17 00:00:00 2001
 From: hyx0329 <hyx0329@163.com>
 Date: Fri, 1 Jul 2022 18:57:23 +0800
-Subject: [PATCH 1/6] port/nrf: make M60 functional when USB not plugged
+Subject: [PATCH 1/9] port/nrf: make M60 functional when USB not plugged
 
 + Pick changes from a9c3459fb ("customized for m60 keyboard", 2020-07-20)
 + Add necessary function prototypes

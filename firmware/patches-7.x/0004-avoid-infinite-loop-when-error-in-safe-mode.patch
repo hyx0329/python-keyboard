@@ -1,7 +1,7 @@
 From 0997aacc5011dd2fd30a1fe5229685c627004547 Mon Sep 17 00:00:00 2001
 From: hyx0329 <hyx0329@163.com>
 Date: Sat, 2 Jul 2022 00:35:27 +0800
-Subject: [PATCH 4/6] avoid infinite loop when error in safe mode
+Subject: [PATCH 4/9] avoid infinite loop when error in safe mode
 
 Signed-off-by: hyx0329 <hyx0329@163.com>
 ---

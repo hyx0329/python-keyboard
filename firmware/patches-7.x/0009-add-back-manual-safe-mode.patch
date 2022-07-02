@@ -1,0 +1,57 @@
+From bad4446a797ff90c0561f80132835c429df8b900 Mon Sep 17 00:00:00 2001
+From: hyx0329 <hyx0329@163.com>
+Date: Sat, 2 Jul 2022 15:50:31 +0800
+Subject: [PATCH 9/9] add back manual safe mode
+
+The original workaround for soft device assert error also blocks manual
+safe mode. This patch makes it preserve the original reset_state.
+
+Signed-off-by: hyx0329 <hyx0329@163.com>
+---
+ ports/nrf/common-hal/_bleio/Adapter.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/ports/nrf/common-hal/_bleio/Adapter.c b/ports/nrf/common-hal/_bleio/Adapter.c
+index 64e7fcddb..e95986151 100644
+--- a/ports/nrf/common-hal/_bleio/Adapter.c
++++ b/ports/nrf/common-hal/_bleio/Adapter.c
+@@ -40,6 +40,7 @@
+ #include "py/gc.h"
+ #include "py/objstr.h"
+ #include "py/runtime.h"
++#include "supervisor/port.h"
+ #include "supervisor/shared/bluetooth/bluetooth.h"
+ #include "supervisor/shared/safe_mode.h"
+ #include "supervisor/shared/tick.h"
+@@ -77,6 +78,9 @@
+ #define BLEIO_ATTR_TAB_SIZE (BLE_GATTS_ATTR_TAB_SIZE_DEFAULT * 5)
+ #endif
+ 
++#define SAFE_MODE_DATA_GUARD 0xad0000af
++#define SAFE_MODE_DATA_GUARD_MASK 0xff0000ff
++
+ const nvm_bytearray_obj_t common_hal_bleio_nvm_obj = {
+     .base = {
+         .type = &nvm_bytearray_type,
+@@ -90,7 +94,17 @@ STATIC void softdevice_assert_handler(uint32_t id, uint32_t pc, uint32_t info) {
+     NRF_P0->OUTCLR = 1 << 31;
+     NRFX_DELAY_US(10000);
+     // reset_into_safe_mode(NORDIC_SOFT_DEVICE_ASSERT);
+-    reset_into_safe_mode(NO_SAFE_MODE);
++    // we need manual safe mode, so do more checks here
++    uint32_t reset_state = port_get_saved_word();
++    safe_mode_t safe_mode = NO_SAFE_MODE;
++    if ((reset_state & SAFE_MODE_DATA_GUARD_MASK) == SAFE_MODE_DATA_GUARD) {
++        safe_mode = (reset_state & ~SAFE_MODE_DATA_GUARD_MASK) >> 8;
++    }
++    if (safe_mode != NO_SAFE_MODE) {
++        reset_into_safe_mode(safe_mode);
++    } else {
++        reset_into_safe_mode(NO_SAFE_MODE);
++    }
+ }
+ 
+ bleio_connection_internal_t bleio_connections[BLEIO_TOTAL_CONNECTION_COUNT];
+-- 
+2.37.0
+

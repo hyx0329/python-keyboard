@@ -1,0 +1,36 @@
+From f390a8e0144f16d863e39ab61e48b04f58c60a6c Mon Sep 17 00:00:00 2001
+From: hyx0329 <hyx0329@163.com>
+Date: Sat, 2 Jul 2022 14:52:25 +0800
+Subject: [PATCH 8/9] minor tweak to board.c
+
+Signed-off-by: hyx0329 <hyx0329@163.com>
+---
+ ports/nrf/boards/makerdiary_m60_keyboard/board.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/ports/nrf/boards/makerdiary_m60_keyboard/board.c b/ports/nrf/boards/makerdiary_m60_keyboard/board.c
+index a5aeb9eb3..5624ab853 100644
+--- a/ports/nrf/boards/makerdiary_m60_keyboard/board.c
++++ b/ports/nrf/boards/makerdiary_m60_keyboard/board.c
+@@ -87,15 +87,16 @@ void button_event_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+ 
+         uint32_t dt = port_get_raw_ticks(NULL) - button_down_time;
+         button_down_time = 0;
++        uint32_t usb_reg = NRF_POWER->USBREGSTATUS;
+         if (dt > (3 * 1024)) {
+-            if (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) {
++            if (usb_reg & POWER_USBREGSTATUS_VBUSDETECT_Msk) {
+                 reset_to_bootloader();
+             } else {
+                 power_off();
+                 reset_cpu();
+             }
+         } else if (dt > 128) {
+-            if (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) {
++            if (usb_reg & POWER_USBREGSTATUS_VBUSDETECT_Msk) {
+                 reset_cpu();
+             }
+         }
+-- 
+2.37.0
+

@@ -1,0 +1,26 @@
+From 3757cdc4b0a87c07ccc7c16aa77433d2f1e69eb4 Mon Sep 17 00:00:00 2001
+From: Yihui Xiong <yihui.xiong@hotmail.com>
+Date: Thu, 6 Aug 2020 20:14:20 +0800
+Subject: [PATCH 7/9] use fast boot reset to skip bootloader
+
+---
+ ports/nrf/supervisor/port.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/ports/nrf/supervisor/port.c b/ports/nrf/supervisor/port.c
+index 0d1f71e88..3a948031d 100644
+--- a/ports/nrf/supervisor/port.c
++++ b/ports/nrf/supervisor/port.c
+@@ -271,6 +271,9 @@ void reset_cpu(void) {
+     // This counter will get reset to zero during the reboot.
+     uint32_t ticks = nrfx_rtc_counter_get(&rtc_instance);
+     overflow_tracker.overflowed_ticks += ticks / 32;
++    if (!NRF_POWER->GPREGRET) {
++        NRF_POWER->GPREGRET = 0xFB;     // Fast Boot
++    }
+     NVIC_SystemReset();
+     for (;;) {
+     }
+-- 
+2.37.0
+
