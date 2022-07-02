@@ -37,28 +37,24 @@ def macro_handler(dev, n, is_down):
 	else:
 		log('You released macro #{}\n'.format(n))
 
-def switch_storage(status):
-	if 0 == status:
-		try:
-			storage.disable_usb_drive()
-		except AttributeError:
-			storage.remount('/', 0)
-	elif 1 == status:
-		try:
+def switch_storage(enabled):
+	if True == enabled:
+		if hasattr(storage, "enable_usb_drive"):
 			storage.enable_usb_drive()
-		except AttributeError:
-			storage.remount('/', 1)
+	elif False == enabled:
+		if hasattr(storage, "disable_usb_drive"):
+			storage.disable_usb_drive()
 
 def pairs_handler(dev, n):
 	if n == 0:
 		dev.kbd.log('Power-off pair key detected, shutting down\n')
 		microcontroller.reset()
 	elif n == 1:
-		dev.kbd.log('Enable storage manipulation\n')
-		switch_storage(0)
+		dev.kbd.log('Enable storage interface\n')
+		switch_storage(True)
 	elif n == 2:
-		log('Disable storage manipulation\n')
-		switch_storage(1)
+		log('Disable storage interface\n')
+		switch_storage(False)
 	else:
 		dev.kbd.log('You just triggered pair keys #{}\n'.format(n))
 
@@ -74,8 +70,8 @@ keyboard.pairs_handler = pairs_handler
 # Only related to position, not keycode
 keyboard.pairs = [
 	{0, 40}, #0 ESC+ENTER       Poweroff
-	{0, 13}, #1 ESC+BACKSPACE   Remount RW
-	{0, 53}  #2 ESC+LCTRL       Remount RO
+	{0, 13}, #1 ESC+BACKSPACE   Enable usb storage
+	{0, 53}  #2 ESC+LCTRL       Disable usb storage
 ]
 
 # ESC(0)    1(1)   2(2)   3(3)   4(4)   5(5)   6(6)   7(7)   8(8)   9(9)   0(10)  -(11)  =(12)  BACKSPACE(13)
