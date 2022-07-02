@@ -12,6 +12,24 @@ def find_device(devices, usage_page, usage):
 	raise ValueError("Not found")
 
 
+class KeyboardReportLED:
+	def __init__(self, device):
+		self.dev = device
+
+	@property
+	def led_status(self):
+		return self.dev.report[0]
+
+
+class KeyboardLastReportLED:
+	def __init__(self, device):
+		self.dev = device
+
+	@property
+	def led_status(self):
+		return self.dev.last_received_report[0]
+
+
 class HID:
 	def __init__(self, devices):
 		self.keyboard = find_device(devices, usage_page=0x1, usage=0x06)
@@ -28,16 +46,18 @@ class HID:
 
 		self.mouse_report = bytearray(4)
 
+		self._leds = None
 		for device in devices:
-			if (
-				device.usage_page == 0x1
+			if (device.usage_page == 0x1
 				and device.usage == 0x6
-				and hasattr(device, "report")
-			):
-				self._leds = device
+				and hasattr(device, "last_received_report")):
+				self._leds = KeyboardLastReportLED(device)
 				break
-		else:
-			self._leds = None
+			elif (device.usage_page == 0x1
+				and device.usage == 0x6
+				and hasattr(device, "report")):
+				self._leds = KeyboardReportLED(device)
+				break
 
 	def press(self, *keycodes):
 		for keycode in keycodes:
@@ -112,5 +132,5 @@ class HID:
 	@property
 	def leds(self):
 		if self._leds:
-			return self._leds.report[0]
+			return self._leds.led_status
 		return 0
