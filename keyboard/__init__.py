@@ -692,6 +692,7 @@ class Keyboard:
 					distance = 1
 				mouse_time = time.monotonic_ns()
 				self.move_mouse(x * distance, y * distance, wheel)
-				print('dt {}, distance {}'.format(dt // 1000, distance))
+				if self.verbose:
+					print('dt {}, distance {}'.format(dt // 1000, distance))
 				if mouse_speed < 60:
 					mouse_speed += 1
