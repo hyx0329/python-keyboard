@@ -421,7 +421,9 @@ class Keyboard:
 		backlight_interval = 20
 		backlight_last_time = 0
 		while True:
-			t = 1 if mouse_action else 1000
+			# this value also affects backlight refresh rate
+			# idk how to handle it better
+			t = 1 if mouse_action else 50
 			current_time = time.monotonic_ns() // 1000000
 			wait_time = backlight_interval + backlight_last_time - current_time
 			if wait_time <= 0:
