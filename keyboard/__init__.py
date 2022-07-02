@@ -95,6 +95,7 @@ class Keyboard:
 		self.advertisement = ProvideServicesAdvertisement(ble_hid, self.battery)
 		self.advertisement.appearance = 961
 		self.ble = BLERadio()
+		self.ble_hid = None
 		self.set_bt_id(self.ble_id)
 		self.ble_hid = HID(ble_hid.devices)
 		self.usb_hid = HID(usb_hid.devices)
@@ -252,7 +253,8 @@ class Keyboard:
 			n = 0
 
 		if self.ble.connected:
-			self.ble_hid.release_all()
+			if self.ble_hid:
+				self.ble_hid.release_all()
 			for c in self.ble.connections:
 				c.disconnect()
 		if self.ble._adapter.advertising:
